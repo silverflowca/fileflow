@@ -1,9 +1,14 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 8680;
@@ -21,6 +26,9 @@ const supabase = createClient(
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the public directory (built React app)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Auth middleware
 const authenticate = async (req, res, next) => {
@@ -1620,6 +1628,16 @@ app.get('/api/external/users', authenticate, async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'fileflow-api', version: '2.0.0' });
+});
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  // Only serve index.html for non-API routes
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
 });
 
 // Test database connection
