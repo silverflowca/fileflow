@@ -110,10 +110,14 @@ export default function VideoRecorder({ onSave, onClose }: VideoRecorderProps) {
 
       streamRef.current = stream
 
-      // Show preview
+      // Show preview - ensure video element is ready
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = stream
-        videoPreviewRef.current.play()
+        videoPreviewRef.current.muted = true
+        videoPreviewRef.current.playsInline = true
+        await videoPreviewRef.current.play().catch(err => {
+          console.warn('Preview play failed:', err)
+        })
       }
 
       // Handle screen share ending
@@ -147,13 +151,16 @@ export default function VideoRecorder({ onSave, onClose }: VideoRecorderProps) {
       mediaRecorderRef.current = mediaRecorder
 
       mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available:', event.data.size)
         if (event.data.size > 0) {
           chunksRef.current.push(event.data)
         }
       }
 
       mediaRecorder.onstop = () => {
+        console.log('Recording stopped, chunks:', chunksRef.current.length)
         const blob = new Blob(chunksRef.current, { type: mimeType || 'video/webm' })
+        console.log('Created blob:', blob.size, 'bytes')
         setVideoBlob(blob)
         const url = URL.createObjectURL(blob)
         setVideoUrl(url)
@@ -165,7 +172,8 @@ export default function VideoRecorder({ onSave, onClose }: VideoRecorderProps) {
         }
       }
 
-      mediaRecorder.start(1000) // Collect data every second
+      // Request data periodically to ensure we capture everything
+      mediaRecorder.start(100) // Collect data every 100ms for smoother capture
       setRecordingState('recording')
       setDuration(0)
 
@@ -420,6 +428,7 @@ export default function VideoRecorder({ onSave, onClose }: VideoRecorderProps) {
                     height: '100%',
                     objectFit: 'contain',
                   }}
+                  autoPlay
                   muted
                   playsInline
                 />
@@ -499,6 +508,12 @@ export default function VideoRecorder({ onSave, onClose }: VideoRecorderProps) {
                 }}
                 controls
                 playsInline
+                onLoadedMetadata={(e) => {
+                  console.log('Playback video loaded, duration:', e.currentTarget.duration)
+                }}
+                onError={(e) => {
+                  console.error('Playback video error:', e)
+                }}
               />
             )}
           </div>
