@@ -1,0 +1,1647 @@
+openapi: 3.0.3
+info:
+  title: FileFlow API
+  description: |
+    FileFlow is a comprehensive file management system with support for:
+    - File uploads, downloads, and storage management
+    - Folder organization
+    - E-Signature workflows
+    - File versioning
+    - Permissions and sharing
+    - Public links with access control
+    - API keys for external integrations
+    - PDF merging
+
+    ## Authentication
+    Most endpoints require authentication via Bearer token (Supabase JWT).
+    Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your_token>
+    ```
+
+    ## API Keys
+    For external integrations, use API keys with the `/api/v1/*` endpoints.
+    Include the API key in the Authorization header:
+    ```
+    Authorization: Bearer ff_<your_api_key>
+    ```
+  version: 2.0.0
+  contact:
+    name: FileFlow Support
+    email: support@fileflow.app
+
+servers:
+  - url: http://localhost:8680
+    description: Local development
+  - url: https://fileflow.silverflow.ca
+    description: Production
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Files
+    description: File management operations
+  - name: Folders
+    description: Folder management operations
+  - name: E-Signature
+    description: Electronic signature workflows
+  - name: Sharing
+    description: File sharing and permissions
+  - name: Versions
+    description: File version history
+  - name: Comments
+    description: File comments and reviews
+  - name: API Keys
+    description: External API key management
+  - name: Public API
+    description: External API endpoints (require API key)
+
+paths:
+  # ============================================================================
+  # AUTH
+  # ============================================================================
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  session:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+        '401':
+          description: Invalid credentials
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, displayName]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                displayName:
+                  type: string
+      responses:
+        '200':
+          description: Registration successful
+        '400':
+          description: Invalid input or email already exists
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+
+  # ============================================================================
+  # FOLDERS
+  # ============================================================================
+  /api/folders:
+    get:
+      tags: [Folders]
+      summary: List folders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: parent_id
+          in: query
+          description: Parent folder ID (null for root)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of folders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Folder'
+
+    post:
+      tags: [Folders]
+      summary: Create a folder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                parent_id:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+
+  /api/folders/{id}:
+    delete:
+      tags: [Folders]
+      summary: Delete a folder
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Folder deleted
+
+  # ============================================================================
+  # FILES
+  # ============================================================================
+  /api/files:
+    get:
+      tags: [Files]
+      summary: List files
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: folder_id
+          in: query
+          description: Folder ID (null for root)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+
+    post:
+      tags: [Files]
+      summary: Create file record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, file_type, file_extension, size_bytes, storage_path, bucket_name, upload_status]
+              properties:
+                name:
+                  type: string
+                file_type:
+                  type: string
+                file_extension:
+                  type: string
+                size_bytes:
+                  type: integer
+                folder_id:
+                  type: string
+                  nullable: true
+                storage_path:
+                  type: string
+                bucket_name:
+                  type: string
+                upload_status:
+                  type: string
+                  enum: [pending, uploading, completed, failed]
+                thumbnail_path:
+                  type: string
+                dimensions:
+                  type: object
+                  properties:
+                    width:
+                      type: integer
+                    height:
+                      type: integer
+                duration_seconds:
+                  type: number
+      responses:
+        '200':
+          description: File record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+
+  /api/files/{id}:
+    delete:
+      tags: [Files]
+      summary: Delete a file
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File deleted
+
+  /api/files/{id}/details:
+    get:
+      tags: [Files]
+      summary: Get detailed file information
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  file_type:
+                    type: string
+                  size_bytes:
+                    type: integer
+                  urls:
+                    type: object
+                    properties:
+                      download:
+                        type: string
+                      internal:
+                        type: string
+                      view:
+                        type: string
+                      embed:
+                        type: string
+                  sharing:
+                    type: object
+                    properties:
+                      publicLinks:
+                        type: array
+                        items:
+                          type: object
+                      permissionsCount:
+                        type: integer
+                      isPublic:
+                        type: boolean
+                  stats:
+                    type: object
+                    properties:
+                      versionsCount:
+                        type: integer
+                      currentVersion:
+                        type: integer
+                  access:
+                    type: object
+                    properties:
+                      isOwner:
+                        type: boolean
+                      canEdit:
+                        type: boolean
+                      canShare:
+                        type: boolean
+                      canDelete:
+                        type: boolean
+
+  /api/files/upload-url:
+    post:
+      tags: [Files]
+      summary: Get signed upload URL
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileName, fileType]
+              properties:
+                fileName:
+                  type: string
+                fileType:
+                  type: string
+                folderId:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Upload URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                  storagePath:
+                    type: string
+                  token:
+                    type: string
+
+  /api/files/merge-pdf:
+    post:
+      tags: [Files]
+      summary: Merge multiple PDF files
+      description: |
+        Merge multiple PDF files into a single PDF.
+        Source file information is preserved in the merged file's metadata.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file_ids]
+              properties:
+                file_ids:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 2
+                  description: Array of PDF file IDs in merge order
+                output_name:
+                  type: string
+                  description: Name for the merged file (without .pdf extension)
+                folder_id:
+                  type: string
+                  nullable: true
+                  description: Destination folder ID
+      responses:
+        '200':
+          description: PDFs merged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  file:
+                    $ref: '#/components/schemas/File'
+                  merged_info:
+                    type: object
+                    properties:
+                      source_files:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            original_size_bytes:
+                              type: integer
+                            page_count:
+                              type: integer
+                            page_range:
+                              type: object
+                              properties:
+                                start:
+                                  type: integer
+                                end:
+                                  type: integer
+                      total_pages:
+                        type: integer
+                      output_size_bytes:
+                        type: integer
+
+  /api/storage/download/{fileId}:
+    get:
+      tags: [Files]
+      summary: Download a file
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  fileName:
+                    type: string
+
+  # ============================================================================
+  # FILE VERSIONS
+  # ============================================================================
+  /api/files/{id}/versions:
+    get:
+      tags: [Versions]
+      summary: Get file version history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileVersion'
+
+    post:
+      tags: [Versions]
+      summary: Create a new file version
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [storage_path, size_bytes]
+              properties:
+                storage_path:
+                  type: string
+                size_bytes:
+                  type: integer
+                change_summary:
+                  type: string
+      responses:
+        '200':
+          description: Version created
+
+  /api/files/{id}/versions/{versionId}/restore:
+    post:
+      tags: [Versions]
+      summary: Restore a previous version
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version restored
+
+  # ============================================================================
+  # FILE SHARING & PERMISSIONS
+  # ============================================================================
+  /api/files/{id}/permissions:
+    get:
+      tags: [Sharing]
+      summary: Get file permissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of permissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Permission'
+
+    post:
+      tags: [Sharing]
+      summary: Add file permission
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permission_level]
+              properties:
+                user_id:
+                  type: string
+                user_email:
+                  type: string
+                permission_level:
+                  type: string
+                  enum: [viewer, commenter, editor, owner]
+      responses:
+        '200':
+          description: Permission added
+
+  /api/files/{id}/links:
+    get:
+      tags: [Sharing]
+      summary: Get public share links
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of share links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShareLink'
+
+    post:
+      tags: [Sharing]
+      summary: Create a public share link
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permission_level:
+                  type: string
+                  enum: [viewer, editor]
+                  default: viewer
+                expires_at:
+                  type: string
+                  format: date-time
+                max_access_count:
+                  type: integer
+                requires_password:
+                  type: boolean
+                password:
+                  type: string
+                allow_download:
+                  type: boolean
+                  default: true
+                allow_comment:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Share link created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  link_token:
+                    type: string
+                  shareUrl:
+                    type: string
+                  embedUrl:
+                    type: string
+
+  /api/share/{token}:
+    get:
+      tags: [Sharing]
+      summary: Access shared file (public)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shared file access granted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  file:
+                    $ref: '#/components/schemas/File'
+                  downloadUrl:
+                    type: string
+                  permission_level:
+                    type: string
+                  allow_download:
+                    type: boolean
+
+  # ============================================================================
+  # COMMENTS & REVIEWS
+  # ============================================================================
+  /api/files/{id}/comments:
+    get:
+      tags: [Comments]
+      summary: Get file comments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of comments
+
+    post:
+      tags: [Comments]
+      summary: Add a comment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                parent_id:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Comment added
+
+  /api/files/{id}/reviews:
+    get:
+      tags: [Comments]
+      summary: Get file reviews
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of reviews
+
+    post:
+      tags: [Comments]
+      summary: Create a review request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reviewer_id]
+              properties:
+                reviewer_id:
+                  type: string
+                due_date:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Review created
+
+  # ============================================================================
+  # E-SIGNATURE
+  # ============================================================================
+  /api/esignature/requests:
+    get:
+      tags: [E-Signature]
+      summary: List signature requests
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of signature requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SignatureRequest'
+
+    post:
+      tags: [E-Signature]
+      summary: Create a signature request
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, signatories]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                file_id:
+                  type: string
+                  description: File to attach for signing
+                signatories:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, email]
+                    properties:
+                      name:
+                        type: string
+                      email:
+                        type: string
+                        format: email
+                      title:
+                        type: string
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Signature request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignatureRequest'
+
+  /api/esignature/requests/{id}:
+    get:
+      tags: [E-Signature]
+      summary: Get signature request details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Signature request details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignatureRequest'
+
+    delete:
+      tags: [E-Signature]
+      summary: Delete a signature request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request deleted
+
+  /api/esignature/requests/{id}/send:
+    post:
+      tags: [E-Signature]
+      summary: Send signature request to signatories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request sent
+
+  /api/esignature/requests/{id}/cancel:
+    post:
+      tags: [E-Signature]
+      summary: Cancel a signature request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request cancelled
+
+  /api/esignature/requests/{id}/signatories:
+    post:
+      tags: [E-Signature]
+      summary: Add a signatory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                title:
+                  type: string
+                order_index:
+                  type: integer
+      responses:
+        '200':
+          description: Signatory added
+
+  /api/esignature/requests/{id}/attach-file:
+    post:
+      tags: [E-Signature]
+      summary: Attach a file to signature request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file_id]
+              properties:
+                file_id:
+                  type: string
+      responses:
+        '200':
+          description: File attached
+
+  /api/esignature/requests/{id}/pdf:
+    get:
+      tags: [E-Signature]
+      summary: Download signature document as PDF
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /api/esignature/requests/{id}/signed-pdf:
+    get:
+      tags: [E-Signature]
+      summary: Download signed PDF with all signatures
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Signed PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /api/files/{fileId}/signatures:
+    get:
+      tags: [E-Signature]
+      summary: Get signature requests for a specific file
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of signature requests for the file
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SignatureRequest'
+
+  /api/esignature/sign/{token}:
+    get:
+      tags: [E-Signature]
+      summary: Get signing details (public)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Signing details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request:
+                    $ref: '#/components/schemas/SignatureRequest'
+                  signatory:
+                    $ref: '#/components/schemas/Signatory'
+
+  /api/esignature/sign:
+    post:
+      tags: [E-Signature]
+      summary: Submit a signature (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [signatory_id, access_token, signature_data, name, email]
+              properties:
+                signatory_id:
+                  type: string
+                access_token:
+                  type: string
+                signature_data:
+                  type: string
+                  description: Base64 encoded signature image
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Signature submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  all_signed:
+                    type: boolean
+
+  # ============================================================================
+  # API KEYS
+  # ============================================================================
+  /api/keys:
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+
+    post:
+      tags: [API Keys]
+      summary: Create an API key
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                permission_level:
+                  type: string
+                  enum: [read, write, admin]
+                  default: read
+                scope_type:
+                  type: string
+                  enum: [all, folder, file]
+                  default: all
+                scope_ids:
+                  type: array
+                  items:
+                    type: string
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  key:
+                    type: string
+                    description: Full API key (only shown once!)
+                  key_prefix:
+                    type: string
+                  permission_level:
+                    type: string
+                  message:
+                    type: string
+
+  /api/keys/{id}:
+    delete:
+      tags: [API Keys]
+      summary: Revoke an API key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key revoked
+
+  # ============================================================================
+  # PUBLIC API (API Key Auth)
+  # ============================================================================
+  /api/v1/files:
+    get:
+      tags: [Public API]
+      summary: List files (external API)
+      description: Requires API key authentication
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: folder_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of files
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/File'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /api/v1/files/{id}:
+    get:
+      tags: [Public API]
+      summary: Get file details (external API)
+      description: Requires API key authentication
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File details with download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  file:
+                    $ref: '#/components/schemas/File'
+                  downloadUrl:
+                    type: string
+                  permission:
+                    type: string
+
+  # ============================================================================
+  # HEALTH
+  # ============================================================================
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: fileflow-api
+                  version:
+                    type: string
+                    example: 2.0.0
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token from login
+    apiKeyAuth:
+      type: http
+      scheme: bearer
+      description: API key starting with ff_
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [admin, power_user, user, guest]
+        storage_quota_bytes:
+          type: integer
+        storage_used_bytes:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Folder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        owner_id:
+          type: string
+          format: uuid
+        path:
+          type: string
+        depth:
+          type: integer
+        is_root:
+          type: boolean
+        starred:
+          type: boolean
+        color:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    File:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        file_type:
+          type: string
+          description: MIME type
+        file_extension:
+          type: string
+          nullable: true
+        size_bytes:
+          type: integer
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+        owner_id:
+          type: string
+          format: uuid
+        storage_path:
+          type: string
+        bucket_name:
+          type: string
+        thumbnail_path:
+          type: string
+          nullable: true
+        duration_seconds:
+          type: number
+          nullable: true
+          description: For audio/video files
+        dimensions:
+          type: object
+          nullable: true
+          properties:
+            width:
+              type: integer
+            height:
+              type: integer
+        upload_status:
+          type: string
+          enum: [pending, uploading, completed, failed]
+        starred:
+          type: boolean
+        version:
+          type: integer
+        metadata:
+          type: object
+          description: Additional file metadata (e.g., merged PDF source info)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FileVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        file_id:
+          type: string
+          format: uuid
+        version_number:
+          type: integer
+        storage_path:
+          type: string
+        size_bytes:
+          type: integer
+        change_summary:
+          type: string
+          nullable: true
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        file_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        permission_level:
+          type: string
+          enum: [viewer, commenter, editor, owner]
+        granted_by:
+          type: string
+          format: uuid
+        granted_at:
+          type: string
+          format: date-time
+
+    ShareLink:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        link_token:
+          type: string
+        file_id:
+          type: string
+          format: uuid
+        permission_level:
+          type: string
+          enum: [viewer, editor]
+        requires_password:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        max_access_count:
+          type: integer
+          nullable: true
+        current_access_count:
+          type: integer
+        allow_download:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    SignatureRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, pending, completed, cancelled, expired]
+        file_id:
+          type: string
+          format: uuid
+          nullable: true
+        owner_id:
+          type: string
+          format: uuid
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        signatories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Signatory'
+
+    Signatory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        request_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        title:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, signed, declined]
+        order_index:
+          type: integer
+        access_token:
+          type: string
+        signed_at:
+          type: string
+          format: date-time
+          nullable: true
+        signature_data:
+          type: string
+          nullable: true
+
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        key_prefix:
+          type: string
+          description: First 8 characters of the key for identification
+        permission_level:
+          type: string
+          enum: [read, write, admin]
+        scope_type:
+          type: string
+          enum: [all, folder, file]
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        usage_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time

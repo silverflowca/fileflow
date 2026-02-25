@@ -9,6 +9,10 @@ import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import ESignaturePage from './pages/esignature/ESignaturePage'
 import SigningPage from './pages/esignature/SigningPage'
+import SignatureStatusPage from './pages/esignature/SignatureStatusPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import UserManagementPage from './pages/admin/UserManagementPage'
+import AccessTokensPage from './pages/admin/AccessTokensPage'
 import UploadManager from './components/files/UploadManager'
 
 const queryClient = new QueryClient({
@@ -90,6 +94,9 @@ function AppRoutes() {
       {/* Public signing route - no auth required */}
       <Route path="/sign/:token" element={<SigningPage />} />
 
+      {/* Public signature status page - no auth required */}
+      <Route path="/esignature/status/:requestId" element={<SignatureStatusPage />} />
+
       {/* Protected routes */}
       <Route
         path="/"
@@ -104,6 +111,32 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ESignaturePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute>
+            <UserManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/tokens"
+        element={
+          <ProtectedRoute>
+            <AccessTokensPage />
           </ProtectedRoute>
         }
       />

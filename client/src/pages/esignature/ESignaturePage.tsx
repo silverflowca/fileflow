@@ -16,7 +16,10 @@ import {
   Mail,
   Copy,
   ExternalLink,
-  Download
+  Download,
+  UserPlus,
+  Link2,
+  RotateCcw
 } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,6 +40,9 @@ export default function ESignaturePage() {
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
+  const [addingSignatory, setAddingSignatory] = useState<string | null>(null);
+  const [newSignatory, setNewSignatory] = useState({ name: '', email: '', title: '' });
+  const [statusUrl, setStatusUrl] = useState<string | null>(null);
 
   // Fetch requests on mount
   useEffect(() => {
@@ -113,6 +119,52 @@ export default function ESignaturePage() {
       await api.downloadSignedPdf(requestId);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to download PDF');
+    }
+  };
+
+  const handleAddSignatory = async (requestId: string) => {
+    if (!newSignatory.name || !newSignatory.email) {
+      alert('Name and email are required');
+      return;
+    }
+    try {
+      await api.addSignatory(requestId, newSignatory);
+      setNewSignatory({ name: '', email: '', title: '' });
+      setAddingSignatory(null);
+      fetchRequests();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add signatory');
+    }
+  };
+
+  const handleRemoveSignatory = async (requestId: string, signatoryId: string) => {
+    if (!confirm('Remove this signatory?')) return;
+    try {
+      await api.removeSignatory(requestId, signatoryId);
+      fetchRequests();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to remove signatory');
+    }
+  };
+
+  const handleResendInvitation = async (requestId: string, signatoryId: string) => {
+    try {
+      const result = await api.resendSignatoryInvitation(requestId, signatoryId);
+      alert('Invitation resent! New signing link: ' + result.signingUrl);
+      fetchRequests();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to resend invitation');
+    }
+  };
+
+  const handleCopyStatusUrl = async (requestId: string) => {
+    try {
+      const result = await api.getSignatureStatusUrl(requestId);
+      await navigator.clipboard.writeText(result.statusUrl);
+      setStatusUrl(result.statusUrl);
+      alert('Status page URL copied to clipboard!');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to get status URL');
     }
   };
 
@@ -526,6 +578,43 @@ export default function ESignaturePage() {
                     padding: '1rem 1.5rem',
                     backgroundColor: '#f9fafb'
                   }}>
+                    {/* Status URL */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem 1rem',
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '8px',
+                      marginBottom: '0.75rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Link2 size={16} style={{ color: '#3b82f6' }} />
+                        <span style={{ fontSize: '0.875rem', color: '#1e40af' }}>
+                          Share status page with stakeholders
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleCopyStatusUrl(request.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          padding: '0.375rem 0.75rem',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Copy size={12} />
+                        Copy Status URL
+                      </button>
+                    </div>
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {request.signatories.map((signatory, idx) => (
                         <div key={signatory.id} style={{
@@ -606,11 +695,154 @@ export default function ESignaturePage() {
                                 >
                                   <ExternalLink size={14} />
                                 </button>
+                                <button
+                                  onClick={() => handleResendInvitation(request.id, signatory.id)}
+                                  title="Resend invitation"
+                                  style={{
+                                    padding: '0.375rem',
+                                    background: 'none',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    color: '#6b7280'
+                                  }}
+                                >
+                                  <RotateCcw size={14} />
+                                </button>
+                                {request.status !== 'completed' && (
+                                  <button
+                                    onClick={() => handleRemoveSignatory(request.id, signatory.id)}
+                                    title="Remove signatory"
+                                    style={{
+                                      padding: '0.375rem',
+                                      background: 'none',
+                                      border: '1px solid #fecaca',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      color: '#dc2626'
+                                    }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
                         </div>
                       ))}
+
+                      {/* Add Signatory Form */}
+                      {request.status !== 'completed' && request.status !== 'cancelled' && (
+                        <>
+                          {addingSignatory === request.id ? (
+                            <div style={{
+                              padding: '1rem',
+                              backgroundColor: 'white',
+                              borderRadius: '8px',
+                              border: '2px dashed #3b82f6'
+                            }}>
+                              <p style={{ margin: '0 0 0.75rem', fontWeight: '500', fontSize: '0.875rem', color: '#1e40af' }}>
+                                Add New Signatory
+                              </p>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <input
+                                  type="text"
+                                  placeholder="Name *"
+                                  value={newSignatory.name}
+                                  onChange={(e) => setNewSignatory({ ...newSignatory, name: e.target.value })}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem'
+                                  }}
+                                />
+                                <input
+                                  type="email"
+                                  placeholder="Email *"
+                                  value={newSignatory.email}
+                                  onChange={(e) => setNewSignatory({ ...newSignatory, email: e.target.value })}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem'
+                                  }}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Title (optional)"
+                                  value={newSignatory.title}
+                                  onChange={(e) => setNewSignatory({ ...newSignatory, title: e.target.value })}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem'
+                                  }}
+                                />
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                  <button
+                                    onClick={() => handleAddSignatory(request.id)}
+                                    style={{
+                                      flex: 1,
+                                      padding: '0.5rem 1rem',
+                                      backgroundColor: '#3b82f6',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.875rem',
+                                      fontWeight: '500',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Add Signatory
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setAddingSignatory(null);
+                                      setNewSignatory({ name: '', email: '', title: '' });
+                                    }}
+                                    style={{
+                                      padding: '0.5rem 1rem',
+                                      backgroundColor: '#f3f4f6',
+                                      color: '#374151',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.875rem',
+                                      fontWeight: '500',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setAddingSignatory(request.id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem',
+                                padding: '0.75rem',
+                                backgroundColor: 'white',
+                                border: '2px dashed #d1d5db',
+                                borderRadius: '8px',
+                                color: '#6b7280',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <UserPlus size={16} />
+                              Add Another Signatory
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
