@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderPlus, Upload, Home, ChevronRight, Mic, Video, PenTool, Info, Combine, LayoutGrid, List, Shield } from 'lucide-react'
+import { FolderPlus, Upload, Home, ChevronRight, Mic, Video, PenTool, Info, Combine, LayoutGrid, List, Shield, Settings } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useFiles } from '../contexts/FileContext'
 import { useUpload } from '../contexts/UploadContext'
@@ -16,6 +16,7 @@ import FileSignaturesModal from '../components/files/FileSignaturesModal'
 import QuickSignatureModal from '../components/files/QuickSignatureModal'
 import AudioRecorder from '../components/audio/AudioRecorder'
 import { VideoRecorder } from '../components/video'
+import DocumentProcessingSettings from '../components/files/DocumentProcessingSettings'
 import { File as FileType, ViewMode } from '../types/files'
 
 export default function DashboardPage() {
@@ -41,6 +42,7 @@ export default function DashboardPage() {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [showAudioRecorder, setShowAudioRecorder] = useState(false)
   const [showVideoRecorder, setShowVideoRecorder] = useState(false)
+  const [showDocProcessingSettings, setShowDocProcessingSettings] = useState(false)
   const [showPdfMerge, setShowPdfMerge] = useState(false)
   const [previewFile, setPreviewFile] = useState<FileType | null>(null)
   const [detailsFile, setDetailsFile] = useState<FileType | null>(null)
@@ -165,6 +167,24 @@ export default function DashboardPage() {
               </button>
             )}
             <button
+            <button
+              onClick={() => setShowDocProcessingSettings(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Settings size={16} />
+              Doc Processing
+            </button>
               onClick={signOut}
               style={{
                 padding: '0.5rem 1rem',
@@ -523,6 +543,10 @@ export default function DashboardPage() {
           }}
         />
       )}
+      <DocumentProcessingSettings
+        isOpen={showDocProcessingSettings}
+        onClose={() => setShowDocProcessingSettings(false)}
+      />
     </div>
   )
 }
