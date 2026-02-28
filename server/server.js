@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import crypto from 'crypto';
 import fs from 'fs';
+import documentActionsRouter from './routes/document-actions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3883,6 +3884,12 @@ app.get('/api/docs/index', (req, res) => {
     description: 'FileFlow provides a REST API for file management, sharing, and e-signatures.'
   });
 });
+
+// ============================================================================
+// DOCUMENT PROCESSING ROUTES (PDFFlow Integration)
+// ============================================================================
+app.use('/api/document-processing', authenticate, documentActionsRouter);
+app.use('/api', authenticate, documentActionsRouter);
 
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res) => {

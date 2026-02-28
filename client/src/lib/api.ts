@@ -677,3 +677,16 @@ class ApiClient {
 
 export const api = new ApiClient();
 export default api;
+
+// Add document processing methods to ApiClient
+declare module './api' {
+  interface ApiClient {
+    getDocumentProcessingCapabilities(): Promise<any>;
+    checkDocumentProcessingHealth(): Promise<{ available: boolean }>;
+    extractDocument(fileId: string, options?: any): Promise<any>;
+    ocrDocument(fileId: string, options?: any): Promise<any>;
+    detectDocumentLanguage(fileId: string): Promise<any>;
+    translateDocument(fileId: string, options: any): Promise<any>;
+    getProcessingJobStatus(jobId: string): Promise<any>;
+  }
+}
