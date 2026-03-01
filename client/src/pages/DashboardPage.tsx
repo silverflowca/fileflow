@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderPlus, Upload, Home, ChevronRight, Mic, Video, PenTool, Info, Combine, LayoutGrid, List, Shield, Settings } from 'lucide-react'
+import { FolderPlus, Upload, Home, ChevronRight, Mic, Video, PenTool, Info, Combine, LayoutGrid, List, Shield, Settings, Trash2, FileText, Scan, Globe, Languages } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useFiles } from '../contexts/FileContext'
 import { useUpload } from '../contexts/UploadContext'
@@ -18,6 +18,7 @@ import AudioRecorder from '../components/audio/AudioRecorder'
 import { VideoRecorder } from '../components/video'
 import DocumentProcessingSettings from '../components/files/DocumentProcessingSettings'
 import { File as FileType, ViewMode } from '../types/files'
+import { documentProcessing } from '../lib/documentProcessing'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -52,6 +53,8 @@ export default function DashboardPage() {
     const saved = localStorage.getItem('fileflow_view_mode')
     return (saved === 'list' || saved === 'grid') ? saved : 'grid'
   })
+  const [fileMenuOpen, setFileMenuOpen] = useState<string | null>(null)
+  const [menuFile, setMenuFile] = useState<FileType | null>(null)
 
   // Persist view mode preference
   useEffect(() => {
@@ -81,14 +84,82 @@ export default function DashboardPage() {
 
   const handleFileAction = async (file: any, action: string) => {
     if (action === 'menu') {
-      const confirmed = window.confirm(`Delete file "${file.name}"?`)
-      if (confirmed) {
-        await deleteFile(file.id)
-      }
+      setMenuFile(file)
+      setFileMenuOpen(file.id)
     } else if (action === 'details') {
       setDetailsFile(file)
     } else if (action === 'esignature') {
       setSignaturesFile(file)
+    }
+  }
+
+  const handleDeleteFile = async () => {
+    if (!menuFile) return
+    const confirmed = window.confirm(`Delete file "${menuFile.name}"?`)
+    if (confirmed) {
+      await deleteFile(menuFile.id)
+      setFileMenuOpen(null)
+      setMenuFile(null)
+    }
+  }
+
+  const handleExtractText = async () => {
+    if (!menuFile) return
+    setFileMenuOpen(null)
+
+    alert(`Extracting text from ${menuFile.name}`)
+    try {
+      const result = await documentProcessing.extract(menuFile.id)
+      alert(`Finished extracting text from ${menuFile.name}`)
+      console.log('Extracted text:', result)
+      refresh()
+    } catch (error: any) {
+      alert('Failed to extract text: ' + error.message)
+    }
+  }
+
+  const handleRunOCR = async () => {
+    if (!menuFile) return
+    setFileMenuOpen(null)
+
+    alert(`Running OCR on ${menuFile.name}`)
+    try {
+      const result = await documentProcessing.ocr(menuFile.id)
+      alert(`Finished running OCR on ${menuFile.name}`)
+      console.log('OCR result:', result)
+      refresh()
+    } catch (error: any) {
+      alert('Failed to run OCR: ' + error.message)
+    }
+  }
+
+  const handleDetectLanguage = async () => {
+    if (!menuFile) return
+    try {
+      const result = await documentProcessing.detectLanguage(menuFile.id)
+      alert(`Detected language: ${result.language} (${Math.round(result.confidence * 100)}% confidence)`)
+    } catch (error: any) {
+      alert('Failed to detect language: ' + error.message)
+    } finally {
+      setFileMenuOpen(null)
+    }
+  }
+
+  const handleTranslate = async () => {
+    if (!menuFile) return
+    setFileMenuOpen(null)
+
+    const targetLang = prompt('Enter target language code (e.g., es, fr, de):')
+    if (!targetLang) return
+
+    alert(`Translating ${menuFile.name} to ${targetLang}`)
+    try {
+      const result = await documentProcessing.translate(menuFile.id, { targetLanguage: targetLang })
+      alert(`Finished translating ${menuFile.name}`)
+      console.log('Translation result:', result)
+      refresh()
+    } catch (error: any) {
+      alert('Failed to translate: ' + error.message)
     }
   }
 
@@ -167,7 +238,6 @@ export default function DashboardPage() {
               </button>
             )}
             <button
-            <button
               onClick={() => setShowDocProcessingSettings(true)}
               style={{
                 padding: '0.5rem 1rem',
@@ -185,6 +255,7 @@ export default function DashboardPage() {
               <Settings size={16} />
               Doc Processing
             </button>
+            <button
               onClick={signOut}
               style={{
                 padding: '0.5rem 1rem',
@@ -547,6 +618,149 @@ export default function DashboardPage() {
         isOpen={showDocProcessingSettings}
         onClose={() => setShowDocProcessingSettings(false)}
       />
+
+      {/* File Action Menu Dropdown */}
+      {fileMenuOpen && menuFile && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9998
+            }}
+            onClick={() => {
+              setFileMenuOpen(null)
+              setMenuFile(null)
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+              zIndex: 9999,
+              minWidth: '200px',
+              padding: '0.5rem 0'
+            }}
+          >
+            <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e5e7eb', fontWeight: '500', fontSize: '0.875rem' }}>
+              {menuFile.name}
+            </div>
+
+            <button
+              onClick={handleExtractText}
+              style={{
+                width: '100%',
+                padding: '0.5rem 1rem',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <FileText size={16} />
+              Extract Text
+            </button>
+
+            <button
+              onClick={handleRunOCR}
+              style={{
+                width: '100%',
+                padding: '0.5rem 1rem',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Scan size={16} />
+              Run OCR
+            </button>
+
+            <button
+              onClick={handleDetectLanguage}
+              style={{
+                width: '100%',
+                padding: '0.5rem 1rem',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Globe size={16} />
+              Detect Language
+            </button>
+
+            <button
+              onClick={handleTranslate}
+              style={{
+                width: '100%',
+                padding: '0.5rem 1rem',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Languages size={16} />
+              Translate
+            </button>
+
+            <div style={{ borderTop: '1px solid #e5e7eb', margin: '0.5rem 0' }} />
+
+            <button
+              onClick={handleDeleteFile}
+              style={{
+                width: '100%',
+                padding: '0.5rem 1rem',
+                textAlign: 'left',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                color: '#dc2626'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

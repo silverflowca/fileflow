@@ -105,105 +105,190 @@ export function DocumentProcessingSettings({ isOpen, onClose }: DocumentProcessi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        width: '100%',
+        maxWidth: '32rem',
+        maxHeight: '90vh',
+        overflow: 'hidden'
+      }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div className="flex items-center gap-3">
-            <Settings className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold">Document Processing</h2>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '1rem 1.5rem',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Settings style={{ width: '1.25rem', height: '1.25rem', color: '#2563eb' }} />
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Document Processing</h2>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} style={{
+            padding: '0.25rem',
+            borderRadius: '4px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer'
+          }}>
+            <X style={{ width: '1.25rem', height: '1.25rem' }} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div style={{
+          padding: '1.5rem',
+          overflowY: 'auto',
+          maxHeight: 'calc(90vh - 140px)'
+        }}>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-              <span className="ml-2">Loading capabilities...</span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2rem 0'
+            }}>
+              <Loader2 style={{ width: '1.5rem', height: '1.5rem', color: '#2563eb' }} />
+              <span style={{ marginLeft: '0.5rem' }}>Loading capabilities...</span>
             </div>
           ) : !serviceAvailable ? (
-            <div className="text-center py-8">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
-                <X className="w-6 h-6 text-red-600" />
+            <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+              <div style={{
+                width: '3rem',
+                height: '3rem',
+                borderRadius: '50%',
+                backgroundColor: '#fee2e2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 0.75rem'
+              }}>
+                <X style={{ width: '1.5rem', height: '1.5rem', color: '#dc2626' }} />
               </div>
-              <p className="text-gray-600">PDFFlow service is not available</p>
-              <p className="text-sm text-gray-500 mt-1">Document processing features are disabled</p>
+              <p style={{ color: '#4b5563' }}>PDFFlow service is not available</p>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>Document processing features are disabled</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {/* Service Status */}
-              <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded">
-                <Check className="w-4 h-4" />
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.875rem',
+                color: '#059669',
+                backgroundColor: '#f0fdf4',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '4px'
+              }}>
+                <Check style={{ width: '1rem', height: '1rem' }} />
                 <span>PDFFlow connected</span>
               </div>
 
               {/* Feature Toggles */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-gray-900 flex items-center gap-2">
-                  <Wand2 className="w-4 h-4" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h3 style={{
+                  fontWeight: '500',
+                  color: '#111827',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <Wand2 style={{ width: '1rem', height: '1rem' }} />
                   Features
                 </h3>
 
-                <label className="flex items-center justify-between">
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <span className="text-sm font-medium">Text Extraction</span>
-                    <p className="text-xs text-gray-500">Extract text from PDFs and documents</p>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>Text Extraction</span>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Extract text from PDFs and documents</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={settings.enableExtraction}
                     onChange={(e) => setSettings({ ...settings, enableExtraction: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
+                    style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
                   />
                 </label>
 
-                <label className="flex items-center justify-between">
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <span className="text-sm font-medium">OCR Processing</span>
-                    <p className="text-xs text-gray-500">Recognize text in scanned documents</p>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>OCR Processing</span>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Recognize text in scanned documents</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={settings.enableOcr}
                     onChange={(e) => setSettings({ ...settings, enableOcr: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
+                    style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
                   />
                 </label>
 
-                <label className="flex items-center justify-between">
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <span className="text-sm font-medium">Translation</span>
-                    <p className="text-xs text-gray-500">Translate documents to other languages</p>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>Translation</span>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Translate documents to other languages</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={settings.enableTranslation}
                     onChange={(e) => setSettings({ ...settings, enableTranslation: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 rounded"
+                    style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
                   />
                 </label>
               </div>
 
               {/* OCR Settings */}
               {settings.enableOcr && (
-                <div className="space-y-3 pt-2 border-t">
-                  <h3 className="font-medium text-gray-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid #e5e7eb'
+                }}>
+                  <h3 style={{
+                    fontWeight: '500',
+                    color: '#111827',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <FileText style={{ width: '1rem', height: '1rem' }} />
                     OCR Settings
                   </h3>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '0.25rem'
+                    }}>
                       Default OCR Language
                     </label>
                     <select
                       value={settings.defaultOcrLanguage}
                       onChange={(e) => setSettings({ ...settings, defaultOcrLanguage: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem'
+                      }}
                     >
                       {capabilities?.ocr_languages.map((lang) => (
                         <option key={lang} value={lang}>
@@ -213,34 +298,58 @@ export function DocumentProcessingSettings({ isOpen, onClose }: DocumentProcessi
                     </select>
                   </div>
 
-                  <label className="flex items-center gap-2">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <input
                       type="checkbox"
                       checked={settings.autoDetectLanguage}
                       onChange={(e) => setSettings({ ...settings, autoDetectLanguage: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 rounded"
+                      style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
                     />
-                    <span className="text-sm">Auto-detect document language</span>
+                    <span style={{ fontSize: '0.875rem' }}>Auto-detect document language</span>
                   </label>
                 </div>
               )}
 
               {/* Translation Settings */}
               {settings.enableTranslation && (
-                <div className="space-y-3 pt-2 border-t">
-                  <h3 className="font-medium text-gray-900 flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid #e5e7eb'
+                }}>
+                  <h3 style={{
+                    fontWeight: '500',
+                    color: '#111827',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <Globe style={{ width: '1rem', height: '1rem' }} />
                     Translation Settings
                   </h3>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '0.25rem'
+                    }}>
                       Default Target Language
                     </label>
                     <select
                       value={settings.defaultTranslateLanguage}
                       onChange={(e) => setSettings({ ...settings, defaultTranslateLanguage: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem'
+                      }}
                     >
                       {capabilities?.translation_languages.map((lang) => (
                         <option key={lang} value={lang}>
@@ -251,49 +360,67 @@ export function DocumentProcessingSettings({ isOpen, onClose }: DocumentProcessi
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '0.25rem'
+                    }}>
                       PDF Translation Mode
                     </label>
                     <select
                       value={settings.translatePdfMode}
                       onChange={(e) => setSettings({ ...settings, translatePdfMode: e.target.value as 'overlay' | 'append' })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem'
+                      }}
                     >
                       <option value="overlay">Overlay (replace text in place)</option>
                       <option value="append">Append (add translated pages)</option>
                     </select>
                   </div>
 
-                  <label className="flex items-center gap-2">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <input
                       type="checkbox"
                       checked={settings.preserveNumbers}
                       onChange={(e) => setSettings({ ...settings, preserveNumbers: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 rounded"
+                      style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
                     />
-                    <span className="text-sm">Preserve numbers during translation</span>
+                    <span style={{ fontSize: '0.875rem' }}>Preserve numbers during translation</span>
                   </label>
 
-                  <label className="flex items-center gap-2">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <input
                       type="checkbox"
                       checked={settings.preserveFormulas}
                       onChange={(e) => setSettings({ ...settings, preserveFormulas: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 rounded"
+                      style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
                     />
-                    <span className="text-sm">Preserve Excel formulas</span>
+                    <span style={{ fontSize: '0.875rem' }}>Preserve Excel formulas</span>
                   </label>
                 </div>
               )}
 
               {/* Supported Formats */}
-              <div className="pt-2 border-t">
-                <h3 className="font-medium text-gray-900 mb-2">Supported Formats</h3>
-                <div className="flex flex-wrap gap-1">
+              <div style={{ paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: '500', color: '#111827', marginBottom: '0.5rem' }}>Supported Formats</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                   {capabilities && Object.keys(capabilities.supported_file_types).map((ext) => (
                     <span
                       key={ext}
-                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                      style={{
+                        padding: '0.125rem 0.5rem',
+                        backgroundColor: '#f3f4f6',
+                        color: '#4b5563',
+                        fontSize: '0.75rem',
+                        borderRadius: '4px'
+                      }}
                     >
                       {ext}
                     </span>
@@ -305,17 +432,41 @@ export function DocumentProcessingSettings({ isOpen, onClose }: DocumentProcessi
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '0.75rem',
+          padding: '1rem 1.5rem',
+          borderTop: '1px solid #e5e7eb',
+          backgroundColor: '#f9fafb'
+        }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg"
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              color: '#374151',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
           >
             Cancel
           </button>
           <button
             onClick={saveSettings}
             disabled={!serviceAvailable}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              backgroundColor: serviceAvailable ? '#2563eb' : '#93c5fd',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: serviceAvailable ? 'pointer' : 'not-allowed',
+              opacity: serviceAvailable ? 1 : 0.5
+            }}
           >
             Save Settings
           </button>

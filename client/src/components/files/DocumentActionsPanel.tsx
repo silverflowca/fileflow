@@ -174,34 +174,65 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
   const settings = getSettings();
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-medium text-gray-900 flex items-center gap-2">
-        <FileText className="w-4 h-4" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <h3 style={{
+        fontWeight: '500',
+        color: '#111827',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }}>
+        <FileText style={{ width: '1rem', height: '1rem' }} />
         Document Actions
       </h3>
 
       {error && (
-        <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm flex items-center gap-2">
-          <X className="w-4 h-4" />
+        <div style={{
+          padding: '0.75rem',
+          backgroundColor: '#fef2f2',
+          color: '#b91c1c',
+          borderRadius: '8px',
+          fontSize: '0.875rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <X style={{ width: '1rem', height: '1rem' }} />
           {error}
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-2">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '0.5rem'
+      }}>
         {/* Extract Text */}
         {settings.enableExtraction && (
           <button
             onClick={handleExtract}
             disabled={extractStatus === 'loading'}
-            className="flex items-center justify-center gap-2 px-3 py-2 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 0.75rem',
+              backgroundColor: 'white',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              cursor: extractStatus === 'loading' ? 'not-allowed' : 'pointer',
+              opacity: extractStatus === 'loading' ? 0.5 : 1
+            }}
           >
             {extractStatus === 'loading' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 style={{ width: '1rem', height: '1rem' }} />
             ) : extractStatus === 'success' ? (
-              <Check className="w-4 h-4 text-green-600" />
+              <Check style={{ width: '1rem', height: '1rem', color: '#16a34a' }} />
             ) : (
-              <FileText className="w-4 h-4" />
+              <FileText style={{ width: '1rem', height: '1rem' }} />
             )}
             Extract Text
           </button>
@@ -212,14 +243,26 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
           <button
             onClick={handleOcr}
             disabled={ocrStatus === 'loading'}
-            className="flex items-center justify-center gap-2 px-3 py-2 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 0.75rem',
+              backgroundColor: 'white',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              cursor: ocrStatus === 'loading' ? 'not-allowed' : 'pointer',
+              opacity: ocrStatus === 'loading' ? 0.5 : 1
+            }}
           >
             {ocrStatus === 'loading' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 style={{ width: '1rem', height: '1rem' }} />
             ) : ocrStatus === 'success' ? (
-              <Check className="w-4 h-4 text-green-600" />
+              <Check style={{ width: '1rem', height: '1rem', color: '#16a34a' }} />
             ) : (
-              <Scan className="w-4 h-4" />
+              <Scan style={{ width: '1rem', height: '1rem' }} />
             )}
             Run OCR
           </button>
@@ -229,39 +272,89 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
         <button
           onClick={handleDetectLanguage}
           disabled={detectStatus === 'loading'}
-          className="flex items-center justify-center gap-2 px-3 py-2 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            padding: '0.5rem 0.75rem',
+            backgroundColor: 'white',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            cursor: detectStatus === 'loading' ? 'not-allowed' : 'pointer',
+            opacity: detectStatus === 'loading' ? 0.5 : 1
+          }}
         >
           {detectStatus === 'loading' ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 style={{ width: '1rem', height: '1rem' }} />
           ) : detectStatus === 'success' ? (
-            <Check className="w-4 h-4 text-green-600" />
+            <Check style={{ width: '1rem', height: '1rem', color: '#16a34a' }} />
           ) : (
-            <Globe className="w-4 h-4" />
+            <Globe style={{ width: '1rem', height: '1rem' }} />
           )}
           Detect Language
         </button>
 
         {/* Translate */}
         {settings.enableTranslation && (
-          <div className="relative">
+          <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowTranslateOptions(!showTranslateOptions)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
             >
-              <Languages className="w-4 h-4" />
+              <Languages style={{ width: '1rem', height: '1rem' }} />
               Translate
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown style={{ width: '0.75rem', height: '0.75rem' }} />
             </button>
 
             {showTranslateOptions && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 p-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: '0.25rem',
+                backgroundColor: 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                zIndex: 10,
+                padding: '0.75rem'
+              }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '0.25rem'
+                }}>
                   Target Language
                 </label>
                 <select
                   value={targetLanguage}
                   onChange={(e) => setTargetLanguage(e.target.value)}
-                  className="w-full px-2 py-1.5 border rounded text-sm mb-2"
+                  style={{
+                    width: '100%',
+                    padding: '0.375rem 0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    marginBottom: '0.5rem'
+                  }}
                 >
                   {LANGUAGES.map((lang) => (
                     <option key={lang.code} value={lang.code}>
@@ -275,10 +368,24 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
                     handleTranslate();
                   }}
                   disabled={translateStatus === 'loading'}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm disabled:opacity-50"
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    padding: '0.375rem 0.75rem',
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    cursor: translateStatus === 'loading' ? 'not-allowed' : 'pointer',
+                    opacity: translateStatus === 'loading' ? 0.5 : 1
+                  }}
                 >
                   {translateStatus === 'loading' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 style={{ width: '1rem', height: '1rem' }} />
                   ) : (
                     'Translate Now'
                   )}
@@ -291,11 +398,15 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
 
       {/* Results */}
       {detectedLanguage && (
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm">
-            <span className="font-medium">Detected Language:</span>{' '}
+        <div style={{
+          padding: '0.75rem',
+          backgroundColor: '#eff6ff',
+          borderRadius: '8px'
+        }}>
+          <p style={{ fontSize: '0.875rem' }}>
+            <span style={{ fontWeight: '500' }}>Detected Language:</span>{' '}
             {LANGUAGES.find(l => l.code === detectedLanguage.code)?.name || detectedLanguage.code}
-            <span className="text-gray-500 ml-1">
+            <span style={{ color: '#6b7280', marginLeft: '0.25rem' }}>
               ({Math.round(detectedLanguage.confidence * 100)}% confidence)
             </span>
           </p>
@@ -303,19 +414,46 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
       )}
 
       {extractedText && (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b">
-            <span className="text-sm font-medium">Extracted Text</span>
+        <div style={{
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.5rem 0.75rem',
+            backgroundColor: '#f9fafb',
+            borderBottom: '1px solid #d1d5db'
+          }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>Extracted Text</span>
             <button
               onClick={() => copyToClipboard(extractedText)}
-              className="p-1 hover:bg-gray-200 rounded"
+              style={{
+                padding: '0.25rem',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
               title="Copy to clipboard"
             >
-              <Copy className="w-4 h-4" />
+              <Copy style={{ width: '1rem', height: '1rem' }} />
             </button>
           </div>
-          <div className="p-3 max-h-48 overflow-y-auto">
-            <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono">
+          <div style={{
+            padding: '0.75rem',
+            maxHeight: '12rem',
+            overflowY: 'auto'
+          }}>
+            <pre style={{
+              fontSize: '0.75rem',
+              color: '#374151',
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'monospace',
+              margin: 0
+            }}>
               {extractedText.slice(0, 2000)}
               {extractedText.length > 2000 && '...'}
             </pre>
@@ -324,19 +462,46 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
       )}
 
       {translatedText && (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-green-50 border-b">
-            <span className="text-sm font-medium">Translated Text</span>
+        <div style={{
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.5rem 0.75rem',
+            backgroundColor: '#f0fdf4',
+            borderBottom: '1px solid #d1d5db'
+          }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>Translated Text</span>
             <button
               onClick={() => copyToClipboard(translatedText)}
-              className="p-1 hover:bg-green-100 rounded"
+              style={{
+                padding: '0.25rem',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
               title="Copy to clipboard"
             >
-              <Copy className="w-4 h-4" />
+              <Copy style={{ width: '1rem', height: '1rem' }} />
             </button>
           </div>
-          <div className="p-3 max-h-48 overflow-y-auto">
-            <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono">
+          <div style={{
+            padding: '0.75rem',
+            maxHeight: '12rem',
+            overflowY: 'auto'
+          }}>
+            <pre style={{
+              fontSize: '0.75rem',
+              color: '#374151',
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'monospace',
+              margin: 0
+            }}>
               {translatedText.slice(0, 2000)}
               {translatedText.length > 2000 && '...'}
             </pre>
@@ -348,9 +513,21 @@ export function DocumentActionsPanel({ file, onActionComplete }: DocumentActions
         <a
           href={translatedPdfUrl}
           download
-          className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            width: '100%',
+            padding: '0.5rem 0.75rem',
+            backgroundColor: '#16a34a',
+            color: 'white',
+            borderRadius: '8px',
+            fontSize: '0.875rem',
+            textDecoration: 'none'
+          }}
         >
-          <Download className="w-4 h-4" />
+          <Download style={{ width: '1rem', height: '1rem' }} />
           Download Translated PDF
         </a>
       )}

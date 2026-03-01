@@ -56,6 +56,7 @@ export function isPreviewable(mimeType: string): boolean {
     mimeType.startsWith('image/') ||
     mimeType.startsWith('video/') ||
     mimeType.startsWith('audio/') ||
-    mimeType.includes('pdf')
+    mimeType.includes('pdf') ||
+    mimeType === 'text/plain'
   )
 }

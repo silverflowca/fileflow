@@ -25,6 +25,7 @@ export default function FilePreviewModal({
   const [isMuted, setIsMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [textContent, setTextContent] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
 
@@ -49,6 +50,13 @@ export default function FilePreviewModal({
     try {
       const url = await getFileUrl(file.storage_path, file.bucket_name)
       setFileUrl(url)
+
+      // For text files, fetch the content
+      if (file.file_type === 'text/plain' || file.file_extension === '.txt') {
+        const response = await fetch(url)
+        const text = await response.text()
+        setTextContent(text)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load file')
     } finally {
@@ -113,6 +121,7 @@ export default function FilePreviewModal({
   const canPreview = isPreviewable(file.file_type)
   const isVideo = file.file_type.startsWith('video/')
   const isAudio = file.file_type.startsWith('audio/')
+  const isText = file.file_type === 'text/plain' || file.file_extension === '.txt'
 
   return (
     <div
@@ -507,6 +516,31 @@ export default function FilePreviewModal({
                       Loading audio...
                     </p>
                   )}
+                </div>
+              )}
+
+              {isText && textContent !== null && (
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '900px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  padding: '2rem',
+                  overflow: 'auto',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                }}>
+                  <pre style={{
+                    margin: 0,
+                    fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.6',
+                    color: '#1f2937',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
+                  }}>
+                    {textContent}
+                  </pre>
                 </div>
               )}
 

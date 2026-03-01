@@ -78,6 +78,64 @@ router.post('/files/:fileId/actions/extract', async (req, res) => {
       returnArtifacts: false
     });
 
+    // Save extracted text as a separate file
+    if (result.extracted?.full_text) {
+      console.log('Saving extracted text to file...');
+      const baseName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+      const detectedLang = result.detected_language?.code || 'unknown';
+      const textFileName = `${baseName}_text_detected_${detectedLang}_.txt`;
+
+      // Get the folder path from the original file
+      const folderPath = file.storage_path.substring(0, file.storage_path.lastIndexOf('/'));
+      const textFilePath = `${folderPath}/${textFileName}`;
+
+      console.log('Text file path:', textFilePath);
+      console.log('Text length:', result.extracted.full_text.length);
+
+      // Upload text file to storage
+      const textBuffer = Buffer.from(result.extracted.full_text, 'utf-8');
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('files')
+        .upload(textFilePath, textBuffer, {
+          contentType: 'text/plain',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Failed to upload text file to storage:', uploadError);
+      } else {
+        console.log('Text file uploaded successfully:', uploadData);
+
+        // Create a file record in the database
+        const { data: insertData, error: insertError } = await supabase
+          .schema('fileflow')
+          .from('files')
+          .insert({
+            owner_id: userId,
+            folder_id: file.folder_id,
+            name: textFileName,
+            storage_path: textFilePath,
+            bucket_name: 'files',
+            file_type: 'text/plain',
+            file_extension: '.txt',
+            size_bytes: textBuffer.length,
+            upload_status: 'completed',
+            metadata: {
+              extracted_from: fileId,
+              detected_language: result.detected_language
+            }
+          });
+
+        if (insertError) {
+          console.error('Failed to insert file record:', insertError);
+        } else {
+          console.log('File record created successfully:', insertData);
+        }
+      }
+    } else {
+      console.log('No extracted text found in result');
+    }
+
     // Save extraction result
     await saveProcessingResult(fileId, userId, 'extract', result);
 
@@ -134,6 +192,50 @@ router.post('/files/:fileId/actions/ocr', async (req, res) => {
       returnPages: true,
       returnStructured: true
     });
+
+    // Save OCR text as a separate file
+    if (result.extracted?.full_text) {
+      const baseName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+      const detectedLang = result.detected_language?.code || 'unknown';
+      const textFileName = `${baseName}_text_detected_${detectedLang}_.txt`;
+
+      // Get the folder path from the original file
+      const folderPath = file.storage_path.substring(0, file.storage_path.lastIndexOf('/'));
+      const textFilePath = `${folderPath}/${textFileName}`;
+
+      // Upload text file to storage
+      const textBuffer = Buffer.from(result.extracted.full_text, 'utf-8');
+      const { error: uploadError } = await supabase.storage
+        .from('files')
+        .upload(textFilePath, textBuffer, {
+          contentType: 'text/plain',
+          upsert: true
+        });
+
+      if (!uploadError) {
+        // Create a file record in the database
+        await supabase
+          .schema('fileflow')
+          .from('files')
+          .insert({
+            owner_id: userId,
+            folder_id: file.folder_id,
+            name: textFileName,
+            storage_path: textFilePath,
+            bucket_name: 'files',
+            file_type: 'text/plain',
+            file_extension: '.txt',
+            size_bytes: textBuffer.length,
+            upload_status: 'completed',
+            metadata: {
+              extracted_from: fileId,
+              detected_language: result.detected_language,
+              ocr_mode: mode,
+              ocr_language: language
+            }
+          });
+      }
+    }
 
     // Save OCR result
     await saveProcessingResult(fileId, userId, 'ocr', result);
@@ -280,6 +382,66 @@ router.post('/files/:fileId/actions/translate', async (req, res) => {
     } else {
       // Synchronous processing
       const result = await pdfflow.processDocument(buffer, file.name, options);
+
+      // Save translated text as a separate file
+      if (result.translated?.full_text) {
+        console.log('Saving translated text to file...');
+        const baseName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+        const sourceLang = result.detected_language?.code || 'unknown';
+        const textFileName = `${baseName}_translated_${sourceLang}_to_${targetLanguage}_.txt`;
+
+        // Get the folder path from the original file
+        const folderPath = file.storage_path.substring(0, file.storage_path.lastIndexOf('/'));
+        const textFilePath = `${folderPath}/${textFileName}`;
+
+        console.log('Translated text file path:', textFilePath);
+        console.log('Translated text length:', result.translated.full_text.length);
+
+        // Upload text file to storage
+        const textBuffer = Buffer.from(result.translated.full_text, 'utf-8');
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('files')
+          .upload(textFilePath, textBuffer, {
+            contentType: 'text/plain',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Failed to upload translated text file to storage:', uploadError);
+        } else {
+          console.log('Translated text file uploaded successfully:', uploadData);
+
+          // Create a file record in the database
+          const { data: insertData, error: insertError } = await supabase
+            .schema('fileflow')
+            .from('files')
+            .insert({
+              owner_id: userId,
+              folder_id: file.folder_id,
+              name: textFileName,
+              storage_path: textFilePath,
+              bucket_name: 'files',
+              file_type: 'text/plain',
+              file_extension: '.txt',
+              size_bytes: textBuffer.length,
+              upload_status: 'completed',
+              metadata: {
+                translated_from: fileId,
+                source_language: result.detected_language,
+                target_language: targetLanguage,
+                translation_mode: pdfMode
+              }
+            });
+
+          if (insertError) {
+            console.error('Failed to insert translated file record:', insertError);
+          } else {
+            console.log('Translated file record created successfully:', insertData);
+          }
+        }
+      } else {
+        console.log('No translated text found in result');
+      }
 
       // Save translation result
       await saveProcessingResult(fileId, userId, 'translate', result);

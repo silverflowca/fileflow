@@ -39,14 +39,14 @@ export async function processDocument(file, filename, options = {}) {
   if (options.ocrLanguage) form.append('ocr_language_hint', options.ocrLanguage);
   if (options.translateTo) form.append('translate_to', options.translateTo);
   if (options.translatePdfMode) form.append('translate_pdf_mode', options.translatePdfMode);
-  if (options.preserveNumbers !== undefined) form.append('preserve_numbers', options.preserveNumbers);
-  if (options.preserveFormulas !== undefined) form.append('preserve_formulas', options.preserveFormulas);
+  if (options.preserveNumbers !== undefined) form.append('preserve_numbers', String(options.preserveNumbers));
+  if (options.preserveFormulas !== undefined) form.append('preserve_formulas', String(options.preserveFormulas));
   if (options.glossary) form.append('glossary', JSON.stringify(options.glossary));
   if (options.doNotTranslatePatterns) form.append('do_not_translate_patterns', JSON.stringify(options.doNotTranslatePatterns));
 
-  form.append('return_pages', options.returnPages !== false);
-  form.append('return_structured', options.returnStructured !== false);
-  form.append('return_artifacts', options.returnArtifacts !== false);
+  form.append('return_pages', String(options.returnPages !== false));
+  form.append('return_structured', String(options.returnStructured !== false));
+  form.append('return_artifacts', String(options.returnArtifacts !== false));
 
   const response = await fetch(`${PDFFLOW_URL}/v1/process`, {
     method: 'POST',
@@ -80,14 +80,14 @@ export async function createJob(file, filename, options = {}) {
   if (options.ocrLanguage) form.append('ocr_language_hint', options.ocrLanguage);
   if (options.translateTo) form.append('translate_to', options.translateTo);
   if (options.translatePdfMode) form.append('translate_pdf_mode', options.translatePdfMode);
-  if (options.preserveNumbers !== undefined) form.append('preserve_numbers', options.preserveNumbers);
-  if (options.preserveFormulas !== undefined) form.append('preserve_formulas', options.preserveFormulas);
+  if (options.preserveNumbers !== undefined) form.append('preserve_numbers', String(options.preserveNumbers));
+  if (options.preserveFormulas !== undefined) form.append('preserve_formulas', String(options.preserveFormulas));
   if (options.glossary) form.append('glossary', JSON.stringify(options.glossary));
   if (options.doNotTranslatePatterns) form.append('do_not_translate_patterns', JSON.stringify(options.doNotTranslatePatterns));
-  if (options.priority !== undefined) form.append('priority', options.priority);
+  if (options.priority !== undefined) form.append('priority', String(options.priority));
 
-  form.append('return_pages', options.returnPages !== false);
-  form.append('return_structured', options.returnStructured !== false);
+  form.append('return_pages', String(options.returnPages !== false));
+  form.append('return_structured', String(options.returnStructured !== false));
 
   const response = await fetch(`${PDFFLOW_URL}/v1/jobs`, {
     method: 'POST',

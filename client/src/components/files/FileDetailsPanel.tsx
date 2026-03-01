@@ -7,7 +7,6 @@ import {
 import { File as FileType } from '../../types/files'
 import { formatFileSize } from '../../lib/supabase'
 import api from '../../lib/api'
-import { DocumentActionsPanel } from './DocumentActionsPanel'
 
 interface FileDetailsPanelProps {
   file: FileType
@@ -575,17 +574,6 @@ export default function FileDetailsPanel({
                 </div>
               </section>
             )}
-
-            {/* Document Processing Actions */}
-            <section style={{ marginBottom: '1.5rem' }}>
-              <DocumentActionsPanel
-                file={{
-                  id: file.id,
-                  name: file.name,
-                  mime_type: file.file_type
-                }}
-              />
-            </section>
 
             {/* Merged PDF Source Files Info */}
             {file.metadata?.merged_from && Array.isArray(file.metadata.merged_from) && (
