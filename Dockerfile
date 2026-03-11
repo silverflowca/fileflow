@@ -46,6 +46,8 @@ RUN npm ci --only=production
 
 # Copy server source
 COPY server/server.js ./
+COPY server/routes/ ./routes/
+COPY server/services/ ./services/
 
 # Copy built client from previous stage
 COPY --from=client-builder /app/client/dist ./public
