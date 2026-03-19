@@ -8,7 +8,69 @@ import jwt from 'jsonwebtoken';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import crypto from 'crypto';
 import fs from 'fs';
+import os from 'os';
 import documentActionsRouter from './routes/document-actions.js';
+import emailRouter from './routes/email.js';
+
+// ============================================================================
+// AUDIO STREAMING SESSION MANAGER
+// ============================================================================
+// Tracks active recording sessions: sessionId -> { writeStream, filePath, mimeType, userId, lastHeartbeat, size }
+const audioSessions = new Map();
+const AUDIO_TEMP_DIR = path.join(os.tmpdir(), 'fileflow-audio');
+const SESSION_TIMEOUT_MS = 45_000; // 45s without a chunk = auto-finalize
+
+// Ensure temp dir exists
+if (!fs.existsSync(AUDIO_TEMP_DIR)) fs.mkdirSync(AUDIO_TEMP_DIR, { recursive: true });
+
+// Heartbeat watchdog — checks every 15s for stale sessions
+setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, session] of audioSessions) {
+    if (now - session.lastHeartbeat > SESSION_TIMEOUT_MS) {
+      console.log(`[audio] Session ${sessionId} timed out — auto-finalizing`);
+      finalizeAudioSession(sessionId, 'timeout').catch(err =>
+        console.error(`[audio] Auto-finalize error for ${sessionId}:`, err.message)
+      );
+    }
+  }
+}, 15_000);
+
+async function finalizeAudioSession(sessionId, reason = 'manual') {
+  const session = audioSessions.get(sessionId);
+  if (!session) return null;
+
+  audioSessions.delete(sessionId); // Remove first to prevent double-finalize
+
+  // Close the write stream
+  await new Promise((resolve) => {
+    if (session.writeStream.writableEnded) return resolve();
+    session.writeStream.end(resolve);
+  });
+
+  if (session.size === 0 || !fs.existsSync(session.filePath)) {
+    console.log(`[audio] Session ${sessionId} had no data — skipping DB record`);
+    try { fs.unlinkSync(session.filePath); } catch (_) {}
+    return null;
+  }
+
+  console.log(`[audio] Finalized session ${sessionId} (${reason}), size=${session.size} bytes`);
+  return session;
+}
+
+// Graceful shutdown — close all open write streams
+function shutdownAudioSessions() {
+  console.log(`[audio] Shutting down ${audioSessions.size} open recording session(s)...`);
+  for (const [sessionId, session] of audioSessions) {
+    try {
+      if (!session.writeStream.writableEnded) session.writeStream.end();
+      console.log(`[audio] Closed session ${sessionId}`);
+    } catch (_) {}
+  }
+  audioSessions.clear();
+}
+process.on('SIGTERM', shutdownAudioSessions);
+process.on('SIGINT', shutdownAudioSessions);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,6 +82,16 @@ const PORT = process.env.PORT || 8680;
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY,
+  {
+    auth: { autoRefreshToken: false, persistSession: false },
+    db: { schema: 'fileflow' }
+  }
+);
+
+// Supabase client with anon key — required for login/register so Supabase issues real sessions
+const supabaseAnon = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY,
   {
     auth: { autoRefreshToken: false, persistSession: false },
     db: { schema: 'fileflow' }
@@ -63,7 +135,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseAnon.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
     // Get or create profile (ensures profile exists for file uploads)
@@ -106,7 +178,7 @@ app.post('/api/auth/register', async (req, res) => {
   const { email, password, displayName } = req.body;
 
   try {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabaseAnon.auth.signUp({
       email,
       password,
       options: { data: { display_name: displayName } }
@@ -3890,6 +3962,294 @@ app.get('/api/docs/index', (req, res) => {
 // ============================================================================
 app.use('/api/document-processing', authenticate, documentActionsRouter);
 app.use('/api', authenticate, documentActionsRouter);
+
+// ============================================================================
+// EMAIL ROUTES
+// ============================================================================
+app.use('/api/email', authenticate, emailRouter);
+
+// ============================================================================
+// AUDIO STREAMING ROUTES
+// ============================================================================
+
+// POST /api/audio/stream/start — create a new recording session
+app.post('/api/audio/stream/start', authenticate, (req, res) => {
+  const { mimeType = 'audio/webm' } = req.body;
+  const sessionId = crypto.randomUUID();
+  const ext = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+  const filePath = path.join(AUDIO_TEMP_DIR, `${sessionId}.${ext}`);
+
+  try {
+    const writeStream = fs.createWriteStream(filePath, { flags: 'a' });
+
+    writeStream.on('error', (err) => {
+      console.error(`[audio] Write stream error for ${sessionId}:`, err.message);
+      audioSessions.delete(sessionId);
+    });
+
+    audioSessions.set(sessionId, {
+      writeStream,
+      filePath,
+      mimeType,
+      ext,
+      userId: req.user.id,
+      lastHeartbeat: Date.now(),
+      size: 0,
+    });
+
+    console.log(`[audio] Session started: ${sessionId} (${mimeType})`);
+    res.json({ sessionId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/audio/stream/:sessionId/chunk — append a binary chunk
+app.post('/api/audio/stream/:sessionId/chunk', authenticate, express.raw({ type: '*/*', limit: '2mb' }), (req, res) => {
+  const { sessionId } = req.params;
+  const session = audioSessions.get(sessionId);
+
+  if (!session) return res.status(404).json({ error: 'Session not found or expired' });
+  if (session.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.body || req.body.length === 0) return res.status(400).json({ error: 'Empty chunk' });
+
+  session.writeStream.write(req.body, (err) => {
+    if (err) {
+      console.error(`[audio] Chunk write error for ${sessionId}:`, err.message);
+      return res.status(500).json({ error: 'Failed to write chunk' });
+    }
+    session.size += req.body.length;
+    session.lastHeartbeat = Date.now();
+    res.json({ ok: true, size: session.size });
+  });
+});
+
+// POST /api/audio/stream/:sessionId/finalize — close stream, save to storage & DB
+app.post('/api/audio/stream/:sessionId/finalize', authenticate, async (req, res) => {
+  const { sessionId } = req.params;
+  const { fileName, folderId } = req.body;
+
+  const session = audioSessions.get(sessionId);
+  if (!session) return res.status(404).json({ error: 'Session not found or already finalized' });
+  if (session.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  try {
+    const finalized = await finalizeAudioSession(sessionId, 'client');
+    if (!finalized) return res.status(400).json({ error: 'No audio data recorded' });
+
+    const fileBuffer = fs.readFileSync(finalized.filePath);
+    const finalName = fileName
+      ? (fileName.includes('.') ? fileName : `${fileName}.${finalized.ext}`)
+      : `Recording_${new Date().toISOString().replace(/[:.]/g, '-')}.${finalized.ext}`;
+
+    const storagePath = `${req.user.id}/${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${finalized.ext}`;
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('files')
+      .upload(storagePath, fileBuffer, { contentType: finalized.mimeType, upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    // Save file record in DB
+    const { data: fileRecord, error: dbError } = await supabase.from('files').insert({
+      name: finalName,
+      file_type: finalized.mimeType,
+      file_extension: finalized.ext,
+      size_bytes: finalized.size,
+      storage_path: storagePath,
+      bucket_name: 'files',
+      folder_id: folderId || null,
+      owner_id: req.user.id,
+    }).select().single();
+
+    if (dbError) throw dbError;
+
+    // Cleanup temp file
+    try { fs.unlinkSync(finalized.filePath); } catch (_) {}
+
+    console.log(`[audio] Saved recording: ${finalName} (${finalized.size} bytes)`);
+    res.json({ data: fileRecord });
+  } catch (err) {
+    console.error(`[audio] Finalize error for ${sessionId}:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/audio/stream/:sessionId — discard a session (user cancelled)
+app.delete('/api/audio/stream/:sessionId', authenticate, async (req, res) => {
+  const { sessionId } = req.params;
+  const session = audioSessions.get(sessionId);
+
+  if (!session) return res.json({ ok: true }); // Already gone
+  if (session.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  audioSessions.delete(sessionId);
+  try {
+    if (!session.writeStream.writableEnded) session.writeStream.end();
+    fs.unlinkSync(session.filePath);
+  } catch (_) {}
+
+  console.log(`[audio] Session ${sessionId} discarded by user`);
+  res.json({ ok: true });
+});
+
+// ============================================================================
+// TRANSCRIPTION + AI SUMMARY ROUTES
+// ============================================================================
+
+// In-memory store for transcript results (keyed by file id)
+// For production this should be persisted to DB, but this keeps it simple.
+const transcriptCache = new Map();
+
+// POST /api/audio/transcribe/:fileId — download file from storage, send to Deepgram
+app.post('/api/audio/transcribe/:fileId', authenticate, async (req, res) => {
+  const { fileId } = req.params;
+  const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
+  if (!DEEPGRAM_API_KEY) return res.status(500).json({ error: 'Deepgram API key not configured' });
+
+  try {
+    // Get file record
+    const { data: file, error: fileError } = await supabase
+      .from('files')
+      .select('id, name, storage_path, bucket_name, file_type, owner_id')
+      .eq('id', fileId)
+      .single();
+
+    if (fileError || !file) return res.status(404).json({ error: 'File not found' });
+    if (file.owner_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!file.file_type?.startsWith('audio/')) return res.status(400).json({ error: 'File is not an audio file' });
+
+    // Check cache
+    if (transcriptCache.has(fileId)) {
+      return res.json(transcriptCache.get(fileId));
+    }
+
+    // Download audio from Supabase Storage
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from(file.bucket_name || 'files')
+      .download(file.storage_path);
+
+    if (downloadError) throw downloadError;
+
+    const audioBuffer = Buffer.from(await fileData.arrayBuffer());
+
+    // Send to Deepgram Nova-2 for transcription
+    const dgRes = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true&paragraphs=true&diarize=true', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${DEEPGRAM_API_KEY}`,
+        'Content-Type': file.file_type,
+      },
+      body: audioBuffer,
+    });
+
+    if (!dgRes.ok) {
+      const dgErr = await dgRes.text();
+      throw new Error(`Deepgram error: ${dgErr}`);
+    }
+
+    const dgData = await dgRes.json();
+    const transcript = dgData?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? '';
+    const paragraphs = dgData?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript ?? null;
+
+    const result = { fileId, transcript, paragraphs, words: dgData?.results?.channels?.[0]?.alternatives?.[0]?.words ?? [] };
+    transcriptCache.set(fileId, result);
+
+    res.json(result);
+  } catch (err) {
+    console.error('[transcribe] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/audio/transcribe/:fileId — retrieve cached transcript
+app.get('/api/audio/transcribe/:fileId', authenticate, async (req, res) => {
+  const { fileId } = req.params;
+  if (transcriptCache.has(fileId)) return res.json(transcriptCache.get(fileId));
+  res.status(404).json({ error: 'No transcript found. Request transcription first.' });
+});
+
+// POST /api/audio/summarize/:fileId — summarize a cached transcript using Claude
+app.post('/api/audio/summarize/:fileId', authenticate, async (req, res) => {
+  const { fileId } = req.params;
+  const cached = transcriptCache.get(fileId);
+  if (!cached?.transcript) return res.status(404).json({ error: 'No transcript found. Transcribe the file first.' });
+
+  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'Anthropic API key not configured' });
+
+  const systemPrompt = process.env.AI_SUMMARY_PROMPT ||
+    'You are a professional meeting assistant. Given the following transcript, provide a concise summary covering: key topics discussed, decisions made, and any important context. Be clear and professional.';
+
+  try {
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `Transcript:\n\n${cached.transcript}` }],
+      }),
+    });
+
+    if (!aiRes.ok) {
+      const aiErr = await aiRes.text();
+      throw new Error(`Claude API error: ${aiErr}`);
+    }
+
+    const aiData = await aiRes.json();
+    const summary = aiData?.content?.[0]?.text ?? '';
+
+    // Cache summary alongside transcript
+    cached.summary = summary;
+    transcriptCache.set(fileId, cached);
+
+    res.json({ fileId, summary });
+  } catch (err) {
+    console.error('[summarize] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/settings/ai-prompt — get current AI summary prompt
+app.get('/api/settings/ai-prompt', authenticate, (req, res) => {
+  res.json({
+    prompt: process.env.AI_SUMMARY_PROMPT ||
+      'You are a professional meeting assistant. Given the following transcript, provide a concise summary covering: key topics discussed, decisions made, and any important context. Be clear and professional.'
+  });
+});
+
+// POST /api/settings/ai-prompt — update AI summary prompt (admin only)
+app.post('/api/settings/ai-prompt', authenticate, async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt?.trim()) return res.status(400).json({ error: 'Prompt is required' });
+
+  // Check admin role
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', req.user.id).single();
+  if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+
+  // Write to .env file at runtime (simple approach for local dev)
+  try {
+    const envPath = new URL('.env', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+    let envContent = fs.readFileSync(envPath, 'utf8');
+    if (envContent.includes('AI_SUMMARY_PROMPT=')) {
+      envContent = envContent.replace(/^AI_SUMMARY_PROMPT=.*/m, `AI_SUMMARY_PROMPT=${prompt.trim()}`);
+    } else {
+      envContent += `\nAI_SUMMARY_PROMPT=${prompt.trim()}\n`;
+    }
+    fs.writeFileSync(envPath, envContent, 'utf8');
+    process.env.AI_SUMMARY_PROMPT = prompt.trim();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res) => {
