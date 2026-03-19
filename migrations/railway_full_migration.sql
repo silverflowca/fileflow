@@ -69,15 +69,18 @@ VALUES ('files', 'files', false, 524288000, NULL) -- 500MB limit
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS policies
-CREATE POLICY IF NOT EXISTS "Authenticated users can upload files"
+DROP POLICY IF EXISTS "Authenticated users can upload files" ON storage.objects;
+CREATE POLICY "Authenticated users can upload files"
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (bucket_id = 'files' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY IF NOT EXISTS "Users can view their own files"
+DROP POLICY IF EXISTS "Users can view their own files" ON storage.objects;
+CREATE POLICY "Users can view their own files"
 ON storage.objects FOR SELECT TO authenticated
 USING (bucket_id = 'files' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY IF NOT EXISTS "Users can delete their own files"
+DROP POLICY IF EXISTS "Users can delete their own files" ON storage.objects;
+CREATE POLICY "Users can delete their own files"
 ON storage.objects FOR DELETE TO authenticated
 USING (bucket_id = 'files' AND auth.uid()::text = (storage.foldername(name))[1]);
 
@@ -148,6 +151,10 @@ ALTER TABLE fileflow.files ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own profile" ON fileflow.profiles;
 CREATE POLICY "Users can view own profile" ON fileflow.profiles
     FOR SELECT TO authenticated USING (id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON fileflow.profiles;
+CREATE POLICY "Users can insert own profile" ON fileflow.profiles
+    FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
 
 DROP POLICY IF EXISTS "Users can update own profile" ON fileflow.profiles;
 CREATE POLICY "Users can update own profile" ON fileflow.profiles
