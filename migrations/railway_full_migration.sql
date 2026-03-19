@@ -61,6 +61,25 @@ CREATE TABLE IF NOT EXISTS fileflow.files (
     deleted_at TIMESTAMPTZ
 );
 
+-- Add any missing columns to existing files table
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'fileflow' AND table_name = 'files' AND column_name = 'is_public') THEN
+        ALTER TABLE fileflow.files ADD COLUMN is_public BOOLEAN DEFAULT false;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'fileflow' AND table_name = 'files' AND column_name = 'original_name') THEN
+        ALTER TABLE fileflow.files ADD COLUMN original_name VARCHAR(255);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'fileflow' AND table_name = 'files' AND column_name = 'bucket_name') THEN
+        ALTER TABLE fileflow.files ADD COLUMN bucket_name VARCHAR(255) DEFAULT 'files';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'fileflow' AND table_name = 'files' AND column_name = 'metadata') THEN
+        ALTER TABLE fileflow.files ADD COLUMN metadata JSONB DEFAULT '{}';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'fileflow' AND table_name = 'files' AND column_name = 'deleted_at') THEN
+        ALTER TABLE fileflow.files ADD COLUMN deleted_at TIMESTAMPTZ;
+    END IF;
+END $$;
+
 -- ----------------------------------------------------------------------------
 -- 3. STORAGE BUCKET
 -- ----------------------------------------------------------------------------
