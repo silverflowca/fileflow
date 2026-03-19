@@ -89,9 +89,14 @@ const supabase = createClient(
 );
 
 // Supabase client with anon key — required for login/register so Supabase issues real sessions
+const ANON_KEY = process.env.SUPABASE_ANON_KEY;
+if (!ANON_KEY) {
+  console.error('[FATAL] SUPABASE_ANON_KEY is not set — login/register will not work');
+  process.exit(1);
+}
 const supabaseAnon = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY,
+  ANON_KEY,
   {
     auth: { autoRefreshToken: false, persistSession: false },
     db: { schema: 'fileflow' }
