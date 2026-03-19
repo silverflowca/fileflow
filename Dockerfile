@@ -5,7 +5,7 @@ FROM node:20-alpine AS client-builder
 WORKDIR /app/client
 
 # Build arguments for Vite (client-side config)
-ARG VITE_API_URL=/api
+ARG VITE_API_URL=
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
 
