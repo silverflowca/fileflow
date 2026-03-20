@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderPlus, Upload, Home, ChevronRight, Mic, Video, PenTool, Info, Combine, LayoutGrid, List, Shield, Settings, Trash2, FileText, Scan, Globe, Languages } from 'lucide-react'
+import { FolderPlus, Upload, Home, ChevronRight, Mic, Video, PenTool, Info, Combine, LayoutGrid, List, Shield, Settings, Trash2, FileText, Scan, Globe, Languages, Subtitles, Sparkles } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useFiles } from '../contexts/FileContext'
 import { useUpload } from '../contexts/UploadContext'
@@ -15,6 +15,7 @@ import PDFMergeModal from '../components/files/PDFMergeModal'
 import FileSignaturesModal from '../components/files/FileSignaturesModal'
 import QuickSignatureModal from '../components/files/QuickSignatureModal'
 import AudioRecorder from '../components/audio/AudioRecorder'
+import TranscriptModal from '../components/audio/TranscriptModal'
 import { VideoRecorder } from '../components/video'
 import DocumentProcessingSettings from '../components/files/DocumentProcessingSettings'
 import { File as FileType, ViewMode } from '../types/files'
@@ -55,6 +56,8 @@ export default function DashboardPage() {
   })
   const [fileMenuOpen, setFileMenuOpen] = useState<string | null>(null)
   const [menuFile, setMenuFile] = useState<FileType | null>(null)
+  const [transcriptFile, setTranscriptFile] = useState<FileType | null>(null)
+  const [transcriptAutoStart, setTranscriptAutoStart] = useState(false)
 
   // Persist view mode preference
   useEffect(() => {
@@ -179,9 +182,10 @@ export default function DashboardPage() {
     }
   }
 
-  const handleSaveAudioRecording = async (audioBlob: Blob, fileName: string) => {
-    const file = new File([audioBlob], fileName, { type: 'audio/webm' })
-    await uploadFile(file, currentFolderId)
+  const handleSaveAudioRecording = () => {
+    // File was already saved to storage by the server during streaming.
+    // Just refresh the file list to show the new recording.
+    refresh()
   }
 
   const handleSaveVideoRecording = async (videoBlob: Blob, fileName: string) => {
@@ -557,11 +561,21 @@ export default function DashboardPage() {
         onDownload={handleDownloadFile}
       />
 
+      {/* Transcript Modal */}
+      {transcriptFile && (
+        <TranscriptModal
+          file={transcriptFile}
+          onClose={() => { setTranscriptFile(null); setTranscriptAutoStart(false) }}
+          autoStart={transcriptAutoStart}
+        />
+      )}
+
       {/* Audio Recorder Modal */}
       {showAudioRecorder && (
         <AudioRecorder
           onSave={handleSaveAudioRecording}
           onClose={() => setShowAudioRecorder(false)}
+          folderId={currentFolderId}
         />
       )}
 
@@ -671,6 +685,61 @@ export default function DashboardPage() {
               <FileText size={16} />
               Extract Text
             </button>
+
+            {menuFile?.file_type?.startsWith('audio/') && (
+              <>
+                <button
+                  onClick={() => {
+                    setTranscriptAutoStart(true)
+                    setTranscriptFile(menuFile)
+                    setFileMenuOpen(null)
+                    setMenuFile(null)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Subtitles size={16} />
+                  Create Transcript
+                </button>
+                <button
+                  onClick={() => {
+                    setTranscriptAutoStart(false)
+                    setTranscriptFile(menuFile)
+                    setFileMenuOpen(null)
+                    setMenuFile(null)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Sparkles size={16} />
+                  Transcribe / Summarize
+                </button>
+              </>
+            )}
 
             <button
               onClick={handleRunOCR}
