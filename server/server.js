@@ -4059,8 +4059,7 @@ app.post('/api/audio/stream/:sessionId/finalize', authenticate, async (req, res)
     // Save file record in DB
     const { data: fileRecord, error: dbError } = await supabase.from('files').insert({
       name: finalName,
-      file_type: finalized.mimeType,
-      file_extension: finalized.ext,
+      mime_type: finalized.mimeType,
       size_bytes: finalized.size,
       storage_path: storagePath,
       bucket_name: 'files',
