@@ -152,7 +152,7 @@ export default function FileDetailsPanel({
 
   if (!isOpen) return null
 
-  const clientUrl = 'http://localhost:5175'
+  const clientUrl = import.meta.env.VITE_CLIENT_URL || window.location.origin
 
   return (
     <div
@@ -275,8 +275,8 @@ export default function FileDetailsPanel({
                 )}
                 <UrlRow
                   label="Internal API"
-                  url={details?.urls?.internal || `http://localhost:8680/api/storage/download/${file.id}`}
-                  onCopy={() => copyToClipboard(details?.urls?.internal || `http://localhost:8680/api/storage/download/${file.id}`, 'internal')}
+                  url={details?.urls?.internal || `${window.location.origin}/api/storage/download/${file.id}`}
+                  onCopy={() => copyToClipboard(details?.urls?.internal || `${window.location.origin}/api/storage/download/${file.id}`, 'internal')}
                   copied={copiedUrl === 'internal'}
                 />
                 <UrlRow
