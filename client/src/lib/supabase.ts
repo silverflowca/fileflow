@@ -28,12 +28,20 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 })
 
 // Helper to get signed URL for file download
+// Automatically refreshes the session before calling storage to avoid token-expiry 400s
 export async function getFileUrl(bucket: string, path: string, expiresIn = 3600) {
+  // Ensure session is fresh before making storage request
+  await supabase.auth.getSession()
+
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, expiresIn)
 
   if (error) {
+    if (error.message?.toLowerCase().includes('not found') || (error as any).statusCode === 400) {
+      console.warn(`[FileFlow] Object not found in storage: ${path}`)
+      return null
+    }
     console.error('Error creating signed URL:', error)
     return null
   }

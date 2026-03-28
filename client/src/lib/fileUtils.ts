@@ -25,17 +25,22 @@ export async function downloadFile(storagePath: string, bucketName: string, file
 }
 
 export async function getFileUrl(storagePath: string, bucketName: string): Promise<string> {
-  try {
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .createSignedUrl(storagePath, 3600) // 1 hour expiration
+  // Refresh session first to avoid token-expiry 400 errors on createSignedUrl
+  await supabase.auth.getSession()
 
-    if (error) throw error
-    return data.signedUrl
-  } catch (error) {
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .createSignedUrl(storagePath, 3600) // 1 hour expiration
+
+  if (error) {
+    if (error.message?.toLowerCase().includes('not found') || (error as any).statusCode === 400) {
+      console.warn(`[FileFlow] Object missing from storage bucket: ${storagePath}`)
+      throw new Error('File not available — it may have been uploaded in a different environment.')
+    }
     console.error('Error getting file URL:', error)
     throw error
   }
+  return data.signedUrl
 }
 
 export function getFileIcon(mimeType: string): string {

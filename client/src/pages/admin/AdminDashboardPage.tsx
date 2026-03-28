@@ -6,6 +6,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
+import AiPromptSettings from '../../components/settings/AiPromptSettings'
+import EmailSettings from '../../components/settings/EmailSettings'
 
 interface SystemStats {
   users: {
@@ -558,6 +560,19 @@ export default function AdminDashboardPage() {
             </div>
           </>
         )}
+      </main>
+
+      {/* Settings Section */}
+      <main style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+          <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>Settings</h2>
+          </div>
+          <AiPromptSettings />
+          <div style={{ borderTop: '1px solid #e5e7eb' }}>
+            <EmailSettings />
+          </div>
+        </div>
       </main>
 
       <style>{`
