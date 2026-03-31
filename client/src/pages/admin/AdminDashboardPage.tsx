@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/api'
 import AiPromptSettings from '../../components/settings/AiPromptSettings'
 import EmailSettings from '../../components/settings/EmailSettings'
+import DeepgramKeySettings from '../../components/settings/DeepgramKeySettings'
 
 interface SystemStats {
   users: {
@@ -569,6 +570,9 @@ export default function AdminDashboardPage() {
             <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>Settings</h2>
           </div>
           <AiPromptSettings />
+          <div style={{ borderTop: '1px solid #e5e7eb' }}>
+            <DeepgramKeySettings />
+          </div>
           <div style={{ borderTop: '1px solid #e5e7eb' }}>
             <EmailSettings />
           </div>

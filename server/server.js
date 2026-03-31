@@ -4221,6 +4221,38 @@ app.post('/api/audio/summarize/:fileId', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/settings/deepgram-key — get whether a key is configured (masked)
+app.get('/api/settings/deepgram-key', authenticate, async (req, res) => {
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', req.user.id).single();
+  if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const key = process.env.DEEPGRAM_API_KEY || '';
+  res.json({ configured: !!key, preview: key ? key.slice(0, 6) + '…' : '' });
+});
+
+// POST /api/settings/deepgram-key — update Deepgram API key (admin only)
+app.post('/api/settings/deepgram-key', authenticate, async (req, res) => {
+  const { key } = req.body;
+  if (!key?.trim()) return res.status(400).json({ error: 'Key is required' });
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', req.user.id).single();
+  if (profile?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+
+  try {
+    const envPath = new URL('.env', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+    let envContent = fs.readFileSync(envPath, 'utf8');
+    if (envContent.includes('DEEPGRAM_API_KEY=')) {
+      envContent = envContent.replace(/^DEEPGRAM_API_KEY=.*/m, `DEEPGRAM_API_KEY=${key.trim()}`);
+    } else {
+      envContent += `\nDEEPGRAM_API_KEY=${key.trim()}\n`;
+    }
+    fs.writeFileSync(envPath, envContent, 'utf8');
+    process.env.DEEPGRAM_API_KEY = key.trim();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/settings/ai-prompt — get current AI summary prompt
 app.get('/api/settings/ai-prompt', authenticate, (req, res) => {
   res.json({
