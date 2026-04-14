@@ -13,6 +13,7 @@ import SignatureStatusPage from './pages/esignature/SignatureStatusPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import UserManagementPage from './pages/admin/UserManagementPage'
 import AccessTokensPage from './pages/admin/AccessTokensPage'
+import SharePage from './pages/SharePage'
 import UploadManager from './components/files/UploadManager'
 
 const queryClient = new QueryClient({
@@ -96,6 +97,9 @@ function AppRoutes() {
 
       {/* Public signature status page - no auth required */}
       <Route path="/esignature/status/:requestId" element={<SignatureStatusPage />} />
+
+      {/* Public share link - no auth required */}
+      <Route path="/share/:token" element={<SharePage />} />
 
       {/* Protected routes */}
       <Route

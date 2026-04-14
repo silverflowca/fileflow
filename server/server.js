@@ -2659,7 +2659,6 @@ app.get('/api/share/:token', async (req, res) => {
         });
       }
 
-      const crypto = await import('crypto');
       const hash = crypto.createHash('sha256').update(providedPassword).digest('hex');
       if (hash !== link.password_hash) {
         return res.status(401).json({ error: 'Invalid password' });
