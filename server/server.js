@@ -2571,7 +2571,6 @@ app.post('/api/files/:id/links', authenticate, async (req, res) => {
     // Hash password if provided
     let passwordHash = null;
     if (requires_password && password) {
-      const crypto = await import('crypto');
       passwordHash = crypto.createHash('sha256').update(password).digest('hex');
     }
 

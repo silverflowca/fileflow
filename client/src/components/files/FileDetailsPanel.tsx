@@ -132,9 +132,9 @@ export default function FileDetailsPanel({
       const result = await api.createFileLink(file.id, options)
       setNewLinkUrl(result.shareUrl)
       loadLinks()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create link:', err)
-      alert('Failed to create share link')
+      alert(`Failed to create share link: ${err?.message || 'Unknown error'}`)
     } finally {
       setCreatingLink(false)
     }
